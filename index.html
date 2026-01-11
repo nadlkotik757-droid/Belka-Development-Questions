@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reddit-style Questions</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    @font-face {
+      font-family: "Minecraftia";
+      src: url("Minecraftia.woff2") format("woff2");
+      font-display: swap;
+    }
+
+    :root {
+      --bg-grad: linear-gradient(135deg, #835d5d, #b1815c);
+      --panel-bg: #1a1414cc;
+      --panel-border: #2d2222;
+      --panel-shadow: rgba(0, 0, 0, 0.35);
+      --text: #f4e9dc;
+      --muted: #c8b3a2;
+      --accent: #e0c4a2;
+      --scroll-bg: #3a2b2b;
+      --scroll-thumb: #b1815c;
+      --scroll-thumb-hover: #c29167;
+      --input-bg: #2a2222;
+      --input-border: #3a2f2f;
+      --input-focus: #b1815c;
+      --btn-bg: #b1815c;
+      --btn-bg-hover: #c29167;
+      --vote: #d9b089;
+      --link: #f0d2ad;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg-grad);
+      color: var(--text);
+      font-family: "Minecraftia", monospace;
+    }
+
+    body {
+      cursor: url("icon.png") 12 12, auto; /* optional custom cursor */
+    }
+
+    .container {
+      box-sizing: border-box;
+      height: 100vh;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px 16px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: var(--scroll-thumb) var(--scroll-bg);
+    }
+
+    .container::-webkit-scrollbar { width: 12px; }
+    .container::-webkit-scrollbar-track {
+      background: var(--scroll-bg);
+      border-radius: 8px;
+    }
+    .container::-webkit-scrollbar-thumb {
+      background: var(--scroll-thumb);
+      border-radius: 8px;
+      border: 2px solid var(--scroll-bg);
+    }
+    .container::-webkit-scrollbar-thumb:hover {
+      background: var(--scroll-thumb-hover);
+    }
+
+    .tiles {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .tile {
+      background: var(--panel-bg);
+      border: 2px solid var(--panel-border);
+      border-radius: 10px;
+      box-shadow: 0 6px 14px var(--panel-shadow);
+      overflow: hidden;
+    }
+
+    .tile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-bottom: 2px solid var(--panel-border);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tile-id {
+      color: var(--accent);
+      font-size: 14px;
+      letter-spacing: 0.02em;
+    }
+
+    .flair {
+      color: var(--muted);
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .tile-body {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 14px;
+    }
+
+    .vote-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      border-right: 2px solid var(--panel-border);
+      padding-right: 8px;
+    }
+
+    .vote-btn {
+      width: 36px;
+      height: 32px;
+      border-radius: 6px;
+      border: 2px solid var(--panel-border);
+      background: rgba(0,0,0,0.25);
+      color: var(--vote);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: url("cursor.png") 12 12, pointer;
+      transition: transform 120ms ease, background 120ms ease;
+    }
+    .vote-btn:hover { transform: translateY(-2px); background: rgba(0,0,0,0.35); }
+    .vote-count { color: var(--accent); font-size: 14px; }
+
+    .editor,
+    .post-view {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .input {
+      box-sizing: border-box;
+      width: 100%;
+      background: var(--input-bg);
+      color: var(--text);
+      border: 2px solid var(--input-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      outline: none;
+      font-family: "Minecraftia", monospace;
+      font-size: 14px;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+    .input:focus {
+      border-color: var(--input-focus);
+      box-shadow: 0 0 0 3px rgba(177, 129, 92, 0.25);
+    }
+
+    .title-input { font-size: 15px; }
+    .body-input { min-height: 120px; resize: vertical; line-height: 1.35; }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .btn {
+      background: var(--btn-bg);
+      color: #221a18;
+      border: 2px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: "Minecraftia", monospace;
+      font-size: 14px;
+      cursor: url("cursor.png") 12 12, pointer;
+      transition: transform 120ms ease, background 120ms ease;
+    }
+    .btn:hover { transform: translateY(-2px); background: var(--btn-bg-hover); }
+
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .post-title {
+      font-size: 16px;
+      color: var(--text);
+    }
+    .post-body {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
+
+    .link {
+      color: var(--link);
+      text-decoration: underline;
+      cursor: url("cursor.png") 12 12, pointer;
+    }
+
+    @media (max-width: 640px) {
+      .tile-body {
+        grid-template-columns: 52px 1fr;
+      }
+      .body-input { min-height: 100px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="tiles" id="tiles"></div>
+</div>
+
+<script>
+  function createTile(index) {
+    const tile = document.createElement('section');
+    tile.className = 'tile';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'tile-header';
+    const id = document.createElement('div');
+    id.className = 'tile-id';
+    id.textContent = `Question #${index + 1}`;
+    const flair = document.createElement('div');
+    flair.className = 'flair';
+    flair.textContent = 'Ask a question';
+    header.appendChild(id);
+    header.appendChild(flair);
+
+    // Body grid: votes + content
+    const body = document.createElement('div');
+    body.className = 'tile-body';
+
+    // Votes
+    const votes = document.createElement('aside');
+    votes.className = 'vote-col';
+    const up = document.createElement('button');
+    up.className = 'vote-btn';
+    up.textContent = '▲';
+    const count = document.createElement('div');
+    count.className = 'vote-count';
+    count.textContent = '0';
+    const down = document.createElement('button');
+    down.className = 'vote-btn';
+    down.textContent = '▼';
+    votes.appendChild(up);
+    votes.appendChild(count);
+    votes.appendChild(down);
+
+    // Editor
+    const editor = document.createElement('div');
+    editor.className = 'editor';
+
+    const titleInput = document.createElement('input');
+    titleInput.className = 'input title-input';
+    titleInput.placeholder = 'Title';
+
+    const bodyInput = document.createElement('textarea');
+    bodyInput.className = 'input body-input';
+    bodyInput.placeholder = 'Describe your question...';
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const postBtn = document.createElement('button');
+    postBtn.className = 'btn';
+    postBtn.textContent = 'Post';
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'btn';
+    clearBtn.textContent = 'Clear';
+
+    actions.appendChild(clearBtn);
+    actions.appendChild(postBtn);
+
+    editor.appendChild(titleInput);
+    editor.appendChild(bodyInput);
+    editor.appendChild(actions);
+
+    // Post view (hidden initially)
+    const postView = document.createElement('div');
+    postView.className = 'post-view';
+    postView.style.display = 'none';
+
+    const postTitle = document.createElement('div');
+    postTitle.className = 'post-title';
+
+    const postBody = document.createElement('div');
+    postBody.className = 'post-body';
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = 'Posted just now • 0 comments';
+
+    // Simple “edit” link to return to editor
+    const editLink = document.createElement('span');
+    editLink.className = 'link';
+    editLink.textContent = 'Edit';
+    editLink.addEventListener('click', () => {
+      postView.style.display = 'none';
+      editor.style.display = 'flex';
+    });
+
+    postView.appendChild(postTitle);
+    postView.appendChild(postBody);
+    postView.appendChild(meta);
+    postView.appendChild(editLink);
+
+    // Voting logic: local and simple
+    let voteScore = 0;
+    up.addEventListener('click', () => {
+      voteScore += 1;
+      count.textContent = String(voteScore);
+    });
+    down.addEventListener('click', () => {
+      voteScore -= 1;
+      count.textContent = String(voteScore);
+    });
+
+    // Post logic
+    postBtn.addEventListener('click', () => {
+      const title = titleInput.value.trim();
+      const bodyText = bodyInput.value.trim();
+
+      // Minimal validation
+      if (!title) {
+        titleInput.focus();
+        titleInput.style.borderColor = 'var(--input-focus)';
+        return;
+      }
+      // Render post
+      postTitle.textContent = title;
+      postBody.textContent = bodyText || 'No details provided.';
+      meta.textContent = 'Posted just now • 0 comments';
+
+      editor.style.display = 'none';
+      postView.style.display = 'flex';
+    });
+
+    // Clear logic
+    clearBtn.addEventListener('click', () => {
+      titleInput.value = '';
+      bodyInput.value = '';
+      titleInput.focus();
+    });
+
+    body.appendChild(votes);
+    body.appendChild(editor);
+    body.appendChild(postView);
+
+    tile.appendChild(header);
+    tile.appendChild(body);
+
+    return tile;
+  }
+
+  // Generate 50 tiles
+  const tilesRoot = document.getElementById('tiles');
+  for (let i = 0; i < 50; i++) {
+    tilesRoot.appendChild(createTile(i));
+  }
+
+  // Keyboard: navigate between inputs with ArrowUp/ArrowDown
+  window.addEventListener('keydown', (e) => {
+    const inputs = Array.from(document.querySelectorAll('.title-input, .body-input'));
+    if (!inputs.length) return;
+    const activeIndex = inputs.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') {
+      const next = inputs[Math.min(inputs.length - 1, activeIndex + 1)];
+      next?.focus();
+    }
+    if (e.key === 'ArrowUp') {
+      const prev = inputs[Math.max(0, activeIndex - 1)];
+      prev?.focus();
+    }
+  });
+</script>
+</body>
+</html>
